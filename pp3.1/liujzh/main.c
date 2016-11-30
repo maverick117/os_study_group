@@ -13,6 +13,10 @@
 #define HISTLEN 5
 #endif
 
+#ifndef DIRLEN
+#define DIRLEN 512
+#endif
+
 int signal_interrupt;
 
 void interrupt_handler(int signum){
@@ -140,6 +144,7 @@ int main(){
   int status = 0;           /* Status flag for process */
   int comcnt = 0;
   int valid = 0;
+  char currentdir[DIRLEN];
   memset(cmdhist,0,sizeof(char**)*HISTLEN); /* Initialize all command history lines to zero */
   signal_interrupt = 0;
   if(signal(SIGINT,interrupt_handler) == SIG_ERR){
@@ -147,10 +152,13 @@ int main(){
     exit(1);
   }
   while(should_run){
+    
+    getcwd(currentdir,DIRLEN);
+
     if(status == 0)         /* No error */
-      printf("osh > ");
+      printf("osh: %s > ",currentdir);
     else{                   /* Print out error code */
-      printf("%d osh >",status);
+      printf("%d osh: %s >",status,currentdir);
       status = 0;
     }
     fflush(stdout);         /* Flush stdout pipe */
@@ -167,11 +175,25 @@ int main(){
     if (strcmp(args[0],"history") == 0 && args[1] == NULL){
       printHistory(cmdhist,comcnt);
       clearargs(args);
+      waitOthers();
+      continue;
+    }
+    else if(strcmp(args[0],"cd") == 0){
+      if(args[1] != NULL && args[2] == NULL){
+        if(chdir(args[1]) == -1)
+          printf("osh: change directory to %s failed.\n",args[1]); 
+      }
+      else{
+        printf("Invalid argument with command \'cd\'.\n");
+      }
+      waitOthers();
+      updateHistory(args,cmdhist,comcnt);
       continue;
     }
     else if(strcmp(args[0], "!!") == 0 && args[1] == NULL){
       commitFork(cmdhist[comcnt%HISTLEN],waitFlag,&status);
       clearargs(args);
+      waitOthers();
       continue;
     }
     else if(args[0][0] == '!' && args[1] == NULL){
@@ -195,6 +217,7 @@ int main(){
         }
       }
       clearargs(args);
+      waitOthers();
       continue;
     }
     else if(strcmp(args[0], "exit") == 0){
