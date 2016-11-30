@@ -186,6 +186,7 @@ int main(){
       else{
         printf("Invalid argument with command \'cd\'.\n");
       }
+      comcnt++;
       waitOthers();
       updateHistory(args,cmdhist,comcnt);
       continue;
